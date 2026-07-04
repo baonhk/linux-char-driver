@@ -1,0 +1,42 @@
+name: Build & Test Kernel Module
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install kernel headers & build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential linux-headers-$(uname -r)
+
+      - name: Build kernel module
+        run: |
+          cd driver
+          make
+
+      - name: Build userspace test app
+        run: |
+          cd app
+          gcc -Wall -o test test.c
+
+      - name: Run automated driver test (insmod/write/read/ioctl/rmmod)
+        run: |
+          chmod +x scripts/test_driver.sh
+          sudo ./scripts/test_driver.sh
+
+      - name: Upload test evidence log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evidence-log
+          path: test_evidence.log
